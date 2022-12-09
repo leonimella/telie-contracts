@@ -10,7 +10,7 @@ contract TeliePublic721 is ERC721 {
 
   uint256 public tokenId;
   uint256 public mintFee = 2 ether;
-  mapping(uint256 => string) public tokenIdToUri;
+  mapping(uint256 => string) private _tokenURI;
 
   uint8 public constant VERSION = 1;
   address public owner;
@@ -86,15 +86,15 @@ contract TeliePublic721 is ERC721 {
     override
     returns (string memory)
   {
-    return tokenIdToUri[_tokenId];
+    return _tokenURI[_tokenId];
   }
 
-  function mint(string memory _tokenURI) external payable {
+  function mint(string memory uriString) external payable {
     require(msg.value >= mintFee, "Telie: fee required");
-    require(bytes(_tokenURI).length > 9, "Telie: short URI");
+    require(bytes(uriString).length > 9, "Telie: short URI");
 
     tokenId++;
-    tokenIdToUri[tokenId] = _tokenURI;
+    _tokenURI[tokenId] = uriString;
     _safeMint(msg.sender, tokenId, "");
   }
 

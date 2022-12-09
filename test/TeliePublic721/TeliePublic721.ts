@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import type { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 const defaultUri =
   "https://gateway.pinata.cloud/ipfs/QmU2spNtQwJ4Q1fhoBrwpnMy5nmhrpWfnSeZK1Pcmehi5q";
@@ -60,6 +59,26 @@ describe("TeliePublic721", async () => {
         await expect(
           telie721.connect(owner).updateOwner(owner.address)
         ).to.revertedWith("Telie: already owner");
+      });
+
+      it("Reverts if owner transfer user tokens", async () => {
+        const { telie721 } = await loadFixture(setupFixture);
+        const [owner, alice] = await ethers.getSigners();
+
+        await telie721
+          .connect(alice)
+          .mint(defaultUri, { value: parseEther("2") });
+
+        const transferCall = telie721
+          .connect(owner)
+          ["safeTransferFrom(address,address,uint256)"](
+            alice.address,
+            owner.address,
+            1
+          );
+        await expect(transferCall).to.revertedWith(
+          "ERC721: caller is not token owner or approved"
+        );
       });
 
       it("Emits OwnerUpdated", async () => {
@@ -428,11 +447,8 @@ describe("TeliePublic721", async () => {
             .connect(alice)
             .mint(defaultUri, { value: parseEther("2") });
 
-          const contractTokenURI = await telie721.tokenIdToUri(1);
-          const funcContractTokenURI = await telie721.tokenURI(1);
-          expect(contractTokenURI)
-            .to.be.equals(defaultUri)
-            .to.be.equals(funcContractTokenURI);
+          const contractTokenURI = await telie721.tokenURI(1);
+          expect(contractTokenURI).to.be.equals(defaultUri);
         });
 
         it("Emits Transfer", async () => {
@@ -474,6 +490,27 @@ describe("TeliePublic721", async () => {
             .mint(defaultUri, { value: parseEther("2") });
 
           await expect(telie721.connect(bob).burn(1)).to.revertedWith(
+            "Telie: not token owner"
+          );
+        });
+
+        it("Reverts if user try to burn a minted token, but already transfered to another user", async () => {
+          const { telie721 } = await loadFixture(setupFixture);
+          const [_, alice, bob] = await ethers.getSigners();
+
+          await telie721
+            .connect(alice)
+            .mint(defaultUri, { value: parseEther("2") });
+
+          await telie721
+            .connect(alice)
+            ["safeTransferFrom(address,address,uint256)"](
+              alice.address,
+              bob.address,
+              1
+            );
+
+          await expect(telie721.connect(alice).burn(1)).to.revertedWith(
             "Telie: not token owner"
           );
         });
