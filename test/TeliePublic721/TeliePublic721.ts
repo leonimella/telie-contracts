@@ -3,6 +3,10 @@ import { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import type { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
+function parseEther(value: string) {
+  return ethers.utils.parseEther(value);
+}
+
 describe("TeliePublic721", async () => {
   async function setupFixture() {
     const [owner] = await ethers.getSigners();
@@ -12,147 +16,251 @@ describe("TeliePublic721", async () => {
     return { telie721 };
   }
 
-  describe("Ownership", async () => {
-    it("Deployer is Owner", async () => {
-      const [deployer] = await ethers.getSigners();
-      const Telie721 = await ethers.getContractFactory("TeliePublic721");
-      const telie721 = await Telie721.connect(deployer).deploy(
-        "Test Deploy",
-        "TD"
-      );
+  describe("Management", async () => {
+    describe("Ownership", async () => {
+      it("Deployer is Owner", async () => {
+        const [deployer] = await ethers.getSigners();
+        const Telie721 = await ethers.getContractFactory("TeliePublic721");
+        const telie721 = await Telie721.connect(deployer).deploy(
+          "Test Deploy",
+          "TD"
+        );
 
-      await telie721.deployed();
-      const ownerAdr = await telie721.owner();
+        await telie721.deployed();
+        const ownerAdr = await telie721.owner();
 
-      expect(ownerAdr).to.be.equals(deployer.address);
+        expect(ownerAdr).to.be.equals(deployer.address);
+      });
+
+      it("Owner should update new owner", async () => {
+        const { telie721 } = await loadFixture(setupFixture);
+        const [owner, alice] = await ethers.getSigners();
+
+        await telie721.connect(owner).updateOwner(alice.address);
+        const newOwnerAdr = await telie721.owner();
+
+        expect(newOwnerAdr).to.be.equals(alice.address);
+      });
+
+      it("Reverts if non-owner try to change owner", async () => {
+        const { telie721 } = await loadFixture(setupFixture);
+        const [owner, alice] = await ethers.getSigners();
+
+        await expect(
+          telie721.connect(alice).updateOwner(alice.address)
+        ).to.revertedWith("Telie: not owner");
+      });
+
+      it("Reverts if current owner calls updateOwner", async () => {
+        const { telie721 } = await loadFixture(setupFixture);
+        const [owner] = await ethers.getSigners();
+
+        await expect(
+          telie721.connect(owner).updateOwner(owner.address)
+        ).to.revertedWith("Telie: already owner");
+      });
+
+      it("Emits OwnerUpdated", async () => {
+        const { telie721 } = await loadFixture(setupFixture);
+        const [owner, alice] = await ethers.getSigners();
+
+        await expect(
+          telie721.connect(owner).updateOwner(alice.address)
+        ).to.emit(telie721, "OwnerUpdated");
+      });
     });
 
-    it("Owner should update new owner", async () => {
-      const { telie721 } = await loadFixture(setupFixture);
-      const [owner, alice] = await ethers.getSigners();
+    describe("Pause", async () => {
+      it("Deployed in not paused state", async () => {
+        const Telie721 = await ethers.getContractFactory("TeliePublic721");
+        const telie721 = await Telie721.deploy("Test Deploy", "TD");
 
-      await telie721.connect(owner).updateOwner(alice.address);
-      const newOwnerAdr = await telie721.owner();
+        await telie721.deployed();
 
-      expect(newOwnerAdr).to.be.equals(alice.address);
+        const paused = await telie721.paused();
+        expect(false).to.be.equals(paused);
+      });
+
+      it("Token transfers go through if not paused", async () => {
+        expect(true).to.be.false;
+      });
+
+      it("Token transfers must revert if it is paused", async () => {
+        expect(true).to.be.false;
+      });
+
+      it("Token mint go through if not paused", async () => {
+        expect(true).to.be.false;
+      });
+
+      it("Token mint must revert if it is paused", async () => {
+        expect(true).to.be.false;
+      });
+
+      it("Token burn go through if not paused", async () => {
+        expect(true).to.be.false;
+      });
+
+      it("Token burn must revert if it is paused", async () => {
+        expect(true).to.be.false;
+      });
+
+      it("Should update owner if contract is not paused", async () => {
+        const { telie721 } = await loadFixture(setupFixture);
+        const [owner, alice] = await ethers.getSigners();
+        const paused = await telie721.paused();
+
+        expect(false).to.be.equals(paused);
+
+        await telie721.connect(owner).updateOwner(alice.address);
+        const newOwnerAdr = await telie721.owner();
+
+        expect(newOwnerAdr).to.be.equals(alice.address);
+      });
+
+      it("Reverts update owner if contract is paused", async () => {
+        const { telie721 } = await loadFixture(setupFixture);
+        const [owner, alice] = await ethers.getSigners();
+
+        await telie721.togglePause();
+
+        const paused = await telie721.paused();
+        expect(true).to.be.equals(paused);
+
+        await expect(
+          telie721.connect(owner).updateOwner(alice.address)
+        ).to.revertedWith("Telie: paused");
+      });
+
+      it("Owner should pause/unpause contract", async () => {
+        const { telie721 } = await loadFixture(setupFixture);
+        const [owner] = await ethers.getSigners();
+
+        let paused = await telie721.paused();
+        expect(false).to.be.equals(paused);
+
+        await telie721.connect(owner).togglePause();
+
+        paused = await telie721.paused();
+        expect(true).to.be.equals(paused);
+      });
+
+      it("Reverts if not owner pause/unpause contract", async () => {
+        const { telie721 } = await loadFixture(setupFixture);
+        const [_, alice] = await ethers.getSigners();
+
+        await expect(telie721.connect(alice).togglePause()).to.revertedWith(
+          "Telie: not owner"
+        );
+      });
+
+      it("Emits TogglePause", async () => {
+        const { telie721 } = await loadFixture(setupFixture);
+        await expect(telie721.togglePause()).to.emit(telie721, "TogglePause");
+      });
     });
 
-    it("Reverts if non-owner try to change owner", async () => {
-      const { telie721 } = await loadFixture(setupFixture);
-      const [owner, alice] = await ethers.getSigners();
+    describe("Mint Fee", async () => {
+      it("Owner should update mint fee", async () => {
+        const { telie721 } = await loadFixture(setupFixture);
+        const currentFee = await telie721.mintFee();
+        const newFee = parseEther("1");
 
-      await expect(
-        telie721.connect(alice).updateOwner(alice.address)
-      ).to.revertedWith("Telie: not owner");
+        expect(currentFee).to.be.equals(parseEther("2"));
+        await telie721.updateMintFee(newFee);
+
+        const updatedFee = await telie721.mintFee();
+        expect(updatedFee).to.be.equals(newFee);
+      });
+
+      it("Reverts if not owner try to update mint fee", async () => {
+        const { telie721 } = await loadFixture(setupFixture);
+        const [_, alice] = await ethers.getSigners();
+
+        await expect(
+          telie721.connect(alice).updateMintFee(parseEther("0"))
+        ).to.revertedWith("Telie: not owner");
+      });
+
+      it("Should update mint fee if not paused", async () => {
+        const { telie721 } = await loadFixture(setupFixture);
+        const paused = await telie721.paused();
+        const newFee = parseEther("1");
+
+        expect(false).to.be.equals(paused);
+        await telie721.updateMintFee(newFee);
+
+        const updatedFee = await telie721.mintFee();
+        expect(updatedFee).to.be.equals(newFee);
+      });
+
+      it("Reverts update of mint fee if is paused", async () => {
+        const { telie721 } = await loadFixture(setupFixture);
+
+        await telie721.togglePause();
+        const paused = await telie721.paused();
+        expect(true).to.be.equals(paused);
+
+        await expect(telie721.updateMintFee(parseEther("1"))).to.revertedWith(
+          "Telie: paused"
+        );
+      });
+
+      it("Emits FeeUpdated", async () => {
+        const { telie721 } = await loadFixture(setupFixture);
+
+        await expect(telie721.updateMintFee(parseEther("1"))).to.emit(
+          telie721,
+          "MintFeeUpdated"
+        );
+      });
     });
 
-    it("Reverts if current owner calls updateOwner", async () => {
-      const { telie721 } = await loadFixture(setupFixture);
-      const [owner] = await ethers.getSigners();
+    describe("Withdrawal", async () => {
+      it("Owner should withdrawal all contract balance", async () => {
+        const { telie721 } = await loadFixture(setupFixture);
+        const [owner] = await ethers.getSigners();
+        const ownerCurrentBalance = await owner.getBalance();
+        const contractBalance = await telie721.provider.getBalance(
+          telie721.address
+        );
 
-      await expect(
-        telie721.connect(owner).updateOwner(owner.address)
-      ).to.revertedWith("Telie: already owner");
-    });
+        await telie721.withdrawal();
+        const ownerUpdatedBalance = await owner.getBalance();
 
-    it("Emits OwnerUpdated", async () => {
-      const { telie721 } = await loadFixture(setupFixture);
-      const [owner, alice] = await ethers.getSigners();
+        expect(ownerUpdatedBalance).to.be.closeTo(
+          ownerCurrentBalance.add(contractBalance),
+          parseEther("0.0001")
+        );
+      });
 
-      await expect(telie721.connect(owner).updateOwner(alice.address)).to.emit(
-        telie721,
-        "OwnerUpdated"
-      );
-    });
-  });
+      it("Reverts if non-owner call withdrawal", async () => {
+        const { telie721 } = await loadFixture(setupFixture);
+        const [_, alice] = await ethers.getSigners();
 
-  describe("Pausable", async () => {
-    it("Deployed in not paused state", async () => {
-      const Telie721 = await ethers.getContractFactory("TeliePublic721");
-      const telie721 = await Telie721.deploy("Test Deploy", "TD");
+        await expect(telie721.connect(alice).withdrawal()).to.revertedWith(
+          "Telie: not owner"
+        );
+      });
 
-      await telie721.deployed();
+      it("Shoud withdrawal if contract is paused", async () => {
+        const { telie721 } = await loadFixture(setupFixture);
 
-      const paused = await telie721.paused();
-      expect(false).to.be.equals(paused);
-    });
+        await telie721.togglePause();
+        const paused = await telie721.paused();
+        expect(true).to.be.equals(paused);
 
-    it("Token transfers go through if not paused", async () => {
-      expect(true).to.be.false;
-    });
+        await telie721.withdrawal();
+      });
 
-    it("Token transfers must revert if it is paused", async () => {
-      expect(true).to.be.false;
-    });
+      it("Emits BalanceWithdrew", async () => {
+        const { telie721 } = await loadFixture(setupFixture);
 
-    it("Token mint go through if not paused", async () => {
-      expect(true).to.be.false;
-    });
-
-    it("Token mint must revert if it is paused", async () => {
-      expect(true).to.be.false;
-    });
-
-    it("Token burn go through if not paused", async () => {
-      expect(true).to.be.false;
-    });
-
-    it("Token burn must revert if it is paused", async () => {
-      expect(true).to.be.false;
-    });
-
-    it("Should update owner if contract is not paused", async () => {
-      const { telie721 } = await loadFixture(setupFixture);
-      const [owner, alice] = await ethers.getSigners();
-      const paused = await telie721.paused();
-
-      expect(false).to.be.equals(paused);
-
-      await telie721.connect(owner).updateOwner(alice.address);
-      const newOwnerAdr = await telie721.owner();
-
-      expect(newOwnerAdr).to.be.equals(alice.address);
-    });
-
-    it("Reverts update owner if contract is paused", async () => {
-      const { telie721 } = await loadFixture(setupFixture);
-      const [owner, alice] = await ethers.getSigners();
-
-      await telie721.togglePause();
-
-      const paused = await telie721.paused();
-      expect(true).to.be.equals(paused);
-
-      await expect(
-        telie721.connect(owner).updateOwner(alice.address)
-      ).to.revertedWith("Telie: paused");
-    });
-
-    it("Owner should pause/unpause contract", async () => {
-      const { telie721 } = await loadFixture(setupFixture);
-      const [owner] = await ethers.getSigners();
-
-      let paused = await telie721.paused();
-      expect(false).to.be.equals(paused);
-
-      await telie721.connect(owner).togglePause();
-
-      paused = await telie721.paused();
-      expect(true).to.be.equals(paused);
-    });
-
-    it("Reverts if not owner pause/unpause contract", async () => {
-      const { telie721 } = await loadFixture(setupFixture);
-      const [_, alice] = await ethers.getSigners();
-
-      await expect(telie721.connect(alice).togglePause()).to.revertedWith(
-        "Telie: not owner"
-      );
-    });
-
-    it("Emits TogglePause", async () => {
-      const { telie721 } = await loadFixture(setupFixture);
-      await expect(telie721.togglePause()).to.emit(telie721, "TogglePause");
+        await expect(telie721.withdrawal()).to.emit(
+          telie721,
+          "BalanceWithdrew"
+        );
+      });
     });
   });
 });
