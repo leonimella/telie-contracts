@@ -11,7 +11,9 @@ contract TeliePublic721 is ERC721 {
   address public owner;
   bool public paused;
 
+  uint256 public tokenId;
   uint256 public mintFee = 2 ether;
+  mapping(uint256 => string) public tokenIdToUri;
 
   // =============================================================
   //                              Events
@@ -76,4 +78,22 @@ contract TeliePublic721 is ERC721 {
   // =============================================================
   //                       Operational Functions
   // =============================================================
+
+  function tokenURI(uint256 _tokenId)
+    public
+    view
+    override
+    returns (string memory)
+  {
+    return tokenIdToUri[_tokenId];
+  }
+
+  function mint(string memory _tokenURI) external payable notPaused {
+    require(msg.value >= mintFee, "Telie: fee required");
+    require(bytes(_tokenURI).length > 9, "Telie: short URI");
+
+    tokenId++;
+    tokenIdToUri[tokenId] = _tokenURI;
+    _safeMint(msg.sender, tokenId);
+  }
 }

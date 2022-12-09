@@ -3,6 +3,8 @@ import { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import type { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
+const defaultUri =
+  "https://gateway.pinata.cloud/ipfs/QmU2spNtQwJ4Q1fhoBrwpnMy5nmhrpWfnSeZK1Pcmehi5q";
 function parseEther(value: string) {
   return ethers.utils.parseEther(value);
 }
@@ -90,11 +92,28 @@ describe("TeliePublic721", async () => {
       });
 
       it("Token mint go through if not paused", async () => {
-        expect(true).to.be.false;
+        const { telie721 } = await loadFixture(setupFixture);
+        const [_, alice] = await ethers.getSigners();
+
+        const paused = await telie721.paused();
+        expect(false).to.be.equals(paused);
+
+        await telie721
+          .connect(alice)
+          .mint(defaultUri, { value: parseEther("2") });
       });
 
       it("Token mint must revert if it is paused", async () => {
-        expect(true).to.be.false;
+        const { telie721 } = await loadFixture(setupFixture);
+        const [_, alice] = await ethers.getSigners();
+
+        await telie721.togglePause();
+        const paused = await telie721.paused();
+        expect(true).to.be.equals(paused);
+
+        await expect(
+          telie721.connect(alice).mint(defaultUri, { value: parseEther("2") })
+        ).to.revertedWith("Telie: paused");
       });
 
       it("Token burn go through if not paused", async () => {
@@ -260,6 +279,107 @@ describe("TeliePublic721", async () => {
           telie721,
           "BalanceWithdrew"
         );
+      });
+    });
+  });
+
+  describe("Operational", async () => {
+    describe("Tokens", async () => {
+      describe("Mint", async () => {
+        it("Should mint a new token if the fee was paid", async () => {
+          const { telie721 } = await loadFixture(setupFixture);
+          const [_, alice] = await ethers.getSigners();
+
+          const aliceCurrentBalance = await telie721.balanceOf(alice.address);
+          expect(0).to.be.equals(aliceCurrentBalance);
+
+          await telie721
+            .connect(alice)
+            .mint(defaultUri, { value: parseEther("2") });
+
+          const aliceUpdatedBalance = await telie721.balanceOf(alice.address);
+          expect(1).to.be.equals(aliceUpdatedBalance);
+        });
+
+        it("Reverts mint of a new token if the fee was not paid", async () => {
+          const { telie721 } = await loadFixture(setupFixture);
+          const [_, alice] = await ethers.getSigners();
+
+          await expect(
+            telie721.connect(alice).mint(defaultUri)
+          ).to.revertedWith("Telie: fee required");
+        });
+
+        it("Reverts mint of a new token if the tokenURI is to short", async () => {
+          const { telie721 } = await loadFixture(setupFixture);
+          const [_, alice] = await ethers.getSigners();
+
+          await expect(
+            telie721
+              .connect(alice)
+              .mint("short_uri", { value: parseEther("2") })
+          ).to.revertedWith("Telie: short URI");
+        });
+
+        it("Same address can have multiple tokens", async () => {
+          const { telie721 } = await loadFixture(setupFixture);
+          const [_, alice] = await ethers.getSigners();
+
+          const aliceCurrentBalance = await telie721.balanceOf(alice.address);
+          expect(0).to.be.equals(aliceCurrentBalance);
+
+          await telie721
+            .connect(alice)
+            .mint(defaultUri, { value: parseEther("2") });
+          await telie721
+            .connect(alice)
+            .mint(defaultUri, { value: parseEther("2") });
+
+          const aliceUpdatedBalance = await telie721.balanceOf(alice.address);
+          expect(2).to.be.equals(aliceUpdatedBalance);
+        });
+
+        it("Correctly increment tokenId after a new token mint", async () => {
+          const { telie721 } = await loadFixture(setupFixture);
+          const [_, alice] = await ethers.getSigners();
+
+          const currentTokenId = await telie721.tokenId();
+          expect(0).to.be.equals(currentTokenId);
+
+          await telie721
+            .connect(alice)
+            .mint(defaultUri, { value: parseEther("2") });
+          await telie721
+            .connect(alice)
+            .mint(defaultUri, { value: parseEther("2") });
+
+          const updatedTokenId = await telie721.tokenId();
+          expect(2).to.be.equals(updatedTokenId);
+        });
+
+        it("Correclty assigns the tokenURI with the tokenId", async () => {
+          const { telie721 } = await loadFixture(setupFixture);
+          const [_, alice] = await ethers.getSigners();
+
+          await telie721
+            .connect(alice)
+            .mint(defaultUri, { value: parseEther("2") });
+
+          const contractTokenURI = await telie721.tokenIdToUri(1);
+          const funcContractTokenURI = await telie721.tokenURI(1);
+          expect(contractTokenURI)
+            .to.be.equals(defaultUri)
+            .to.be.equals(funcContractTokenURI);
+        });
+
+        it("Emits Transfer", async () => {
+          const { telie721 } = await loadFixture(setupFixture);
+          const [_, alice] = await ethers.getSigners();
+
+          await expect(
+            telie721.connect(alice).mint(defaultUri, { value: parseEther("2") })
+          ).to.emit(telie721, "Transfer");
+        });
       });
     });
   });
