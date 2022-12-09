@@ -9,4 +9,14 @@ contract TeliePublic721 is ERC721 {
   constructor(string memory name, string memory symbol) ERC721(name, symbol) {
     owner = msg.sender;
   }
+
+  modifier isOwner() {
+    require(msg.sender == owner, "Telie: not owner");
+    _;
+  }
+
+  function updateOwner(address newOwner) external isOwner {
+    require(newOwner != owner, "Telie: already owner");
+    owner = newOwner;
+  }
 }
