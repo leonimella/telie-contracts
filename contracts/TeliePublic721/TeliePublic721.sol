@@ -7,13 +7,14 @@ contract TeliePublic721 is ERC721 {
   // =============================================================
   //                       Variables & Constants
   // =============================================================
-  uint8 public constant VERSION = 1;
-  address public owner;
-  bool public paused;
 
   uint256 public tokenId;
   uint256 public mintFee = 2 ether;
   mapping(uint256 => string) public tokenIdToUri;
+
+  uint8 public constant VERSION = 1;
+  address public owner;
+  bool public paused;
 
   // =============================================================
   //                              Events
@@ -88,7 +89,7 @@ contract TeliePublic721 is ERC721 {
     return tokenIdToUri[_tokenId];
   }
 
-  function mint(string memory _tokenURI) external payable notPaused {
+  function mint(string memory _tokenURI) external payable {
     require(msg.value >= mintFee, "Telie: fee required");
     require(bytes(_tokenURI).length > 9, "Telie: short URI");
 
@@ -97,8 +98,22 @@ contract TeliePublic721 is ERC721 {
     _safeMint(msg.sender, tokenId, "");
   }
 
-  function burn(uint256 _tokenId) external notPaused {
+  function burn(uint256 _tokenId) external {
     require(_isApprovedOrOwner(msg.sender, _tokenId), "Telie: not token owner");
     _burn(tokenId);
+  }
+
+  // =============================================================
+  //                        Internal Functions
+  // =============================================================
+
+  function _beforeTokenTransfer(
+    address from,
+    address to,
+    uint256 firstTokenId,
+    uint256 amount
+  ) internal virtual override {
+    super._beforeTokenTransfer(from, to, firstTokenId, amount);
+    require(!paused, "Telie: paused");
   }
 }

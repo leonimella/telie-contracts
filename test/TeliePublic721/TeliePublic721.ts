@@ -84,11 +84,51 @@ describe("TeliePublic721", async () => {
       });
 
       it("Token transfers go through if not paused", async () => {
-        expect(true).to.be.false;
+        const { telie721 } = await loadFixture(setupFixture);
+        const [_, alice, bob] = await ethers.getSigners();
+        const currentBobBalance = await telie721.balanceOf(bob.address);
+
+        const paused = await telie721.paused();
+        expect(false).to.be.equals(paused);
+        expect(0).to.be.equals(currentBobBalance);
+
+        await telie721
+          .connect(alice)
+          .mint(defaultUri, { value: parseEther("2") });
+
+        await telie721
+          .connect(alice)
+          ["safeTransferFrom(address,address,uint256)"](
+            alice.address,
+            bob.address,
+            1
+          );
+
+        const updatedBobBalance = await telie721.balanceOf(bob.address);
+        expect(1).to.be.equals(updatedBobBalance);
       });
 
       it("Token transfers must revert if it is paused", async () => {
-        expect(true).to.be.false;
+        const { telie721 } = await loadFixture(setupFixture);
+        const [_, alice, bob] = await ethers.getSigners();
+
+        await telie721
+          .connect(alice)
+          .mint(defaultUri, { value: parseEther("2") });
+
+        await telie721.togglePause();
+        const paused = await telie721.paused();
+        expect(true).to.be.equals(paused);
+
+        const transferCall = telie721
+          .connect(alice)
+          ["safeTransferFrom(address,address,uint256)"](
+            alice.address,
+            bob.address,
+            1
+          );
+
+        await expect(transferCall).to.revertedWith("Telie: paused");
       });
 
       it("Token mint go through if not paused", async () => {
