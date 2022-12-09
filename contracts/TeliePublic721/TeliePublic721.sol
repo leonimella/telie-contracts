@@ -94,6 +94,11 @@ contract TeliePublic721 is ERC721 {
 
     tokenId++;
     tokenIdToUri[tokenId] = _tokenURI;
-    _safeMint(msg.sender, tokenId);
+    _safeMint(msg.sender, tokenId, "");
+  }
+
+  function burn(uint256 _tokenId) external notPaused {
+    require(_isApprovedOrOwner(msg.sender, _tokenId), "Telie: not token owner");
+    _burn(tokenId);
   }
 }

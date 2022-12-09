@@ -117,11 +117,34 @@ describe("TeliePublic721", async () => {
       });
 
       it("Token burn go through if not paused", async () => {
-        expect(true).to.be.false;
+        const { telie721 } = await loadFixture(setupFixture);
+        const [_, alice] = await ethers.getSigners();
+
+        await telie721
+          .connect(alice)
+          .mint(defaultUri, { value: parseEther("2") });
+
+        const paused = await telie721.paused();
+        expect(false).to.be.equals(paused);
+
+        await telie721.connect(alice).burn(1);
       });
 
       it("Token burn must revert if it is paused", async () => {
-        expect(true).to.be.false;
+        const { telie721 } = await loadFixture(setupFixture);
+        const [_, alice] = await ethers.getSigners();
+
+        await telie721
+          .connect(alice)
+          .mint(defaultUri, { value: parseEther("2") });
+
+        await telie721.togglePause();
+        const paused = await telie721.paused();
+        expect(true).to.be.equals(paused);
+
+        await expect(telie721.connect(alice).burn(1)).to.revertedWith(
+          "Telie: paused"
+        );
       });
 
       it("Should update owner if contract is not paused", async () => {
@@ -370,6 +393,49 @@ describe("TeliePublic721", async () => {
           expect(contractTokenURI)
             .to.be.equals(defaultUri)
             .to.be.equals(funcContractTokenURI);
+        });
+
+        it("Emits Transfer", async () => {
+          const { telie721 } = await loadFixture(setupFixture);
+          const [_, alice] = await ethers.getSigners();
+
+          await expect(
+            telie721.connect(alice).mint(defaultUri, { value: parseEther("2") })
+          ).to.emit(telie721, "Transfer");
+        });
+      });
+
+      describe("Burn", async () => {
+        it("Should burn the token if caller is the token owner", async () => {
+          const { telie721 } = await loadFixture(setupFixture);
+          const [_, alice] = await ethers.getSigners();
+
+          const aliceCurrentBalance = await telie721.balanceOf(alice.address);
+          expect(0).to.be.equals(aliceCurrentBalance);
+
+          await telie721
+            .connect(alice)
+            .mint(defaultUri, { value: parseEther("2") });
+
+          const aliceUpdatedBalance = await telie721.balanceOf(alice.address);
+          expect(1).to.be.equals(aliceUpdatedBalance);
+
+          await telie721.connect(alice).burn(1);
+          const aliceBurnedBalance = await telie721.balanceOf(alice.address);
+          expect(0).to.be.equals(aliceBurnedBalance);
+        });
+
+        it("Reverts token burn if caller is not the owner", async () => {
+          const { telie721 } = await loadFixture(setupFixture);
+          const [_, alice, bob] = await ethers.getSigners();
+
+          await telie721
+            .connect(alice)
+            .mint(defaultUri, { value: parseEther("2") });
+
+          await expect(telie721.connect(bob).burn(1)).to.revertedWith(
+            "Telie: not token owner"
+          );
         });
 
         it("Emits Transfer", async () => {
