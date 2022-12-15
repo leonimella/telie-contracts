@@ -8,10 +8,10 @@ function parseEther(value: string) {
   return ethers.utils.parseEther(value);
 }
 
-describe("TeliePublic721", async () => {
+describe("TelieGallery721", async () => {
   async function setupFixture() {
     const [owner] = await ethers.getSigners();
-    const Telie721 = await ethers.getContractFactory("TeliePublic721");
+    const Telie721 = await ethers.getContractFactory("TelieGallery721");
     const telie721 = await Telie721.connect(owner).deploy("Test Deploy", "TD");
 
     return { telie721 };
@@ -21,7 +21,7 @@ describe("TeliePublic721", async () => {
     describe("Ownership", async () => {
       it("Deployer is Owner", async () => {
         const [deployer] = await ethers.getSigners();
-        const Telie721 = await ethers.getContractFactory("TeliePublic721");
+        const Telie721 = await ethers.getContractFactory("TelieGallery721");
         const telie721 = await Telie721.connect(deployer).deploy(
           "Test Deploy",
           "TD"
@@ -93,7 +93,7 @@ describe("TeliePublic721", async () => {
 
     describe("Pause", async () => {
       it("Deployed in not paused state", async () => {
-        const Telie721 = await ethers.getContractFactory("TeliePublic721");
+        const Telie721 = await ethers.getContractFactory("TelieGallery721");
         const telie721 = await Telie721.deploy("Test Deploy", "TD");
 
         await telie721.deployed();

@@ -1,4 +1,4 @@
-# TeliePublic721.sol Specification
+# TelieGallery721.sol Specification
 
 ## Spec
 
