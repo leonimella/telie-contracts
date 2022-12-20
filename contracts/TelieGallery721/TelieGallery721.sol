@@ -9,10 +9,9 @@ contract TelieGallery721 is ERC721 {
   // =============================================================
 
   uint256 public tokenId;
-  uint256 public mintFee = 2 ether;
+  uint256 public mintFee = 1 ether;
   mapping(uint256 => string) private _tokenURI;
 
-  uint8 public constant VERSION = 1;
   address public owner;
   bool public paused;
 
@@ -57,11 +56,11 @@ contract TelieGallery721 is ERC721 {
     emit TogglePause(paused);
   }
 
-  function withdrawal() external onlyOwner {
+  function withdraw() external onlyOwner {
     uint256 balance = address(this).balance;
     (bool success, ) = msg.sender.call{value: balance}("");
 
-    require(success, "Telie: unsuccessful withdrawal");
+    require(success, "Telie: unsuccessful withdraw");
     emit BalanceWithdrew(balance);
   }
 
@@ -100,6 +99,7 @@ contract TelieGallery721 is ERC721 {
 
   function burn(uint256 _tokenId) external {
     require(_isApprovedOrOwner(msg.sender, _tokenId), "Telie: not token owner");
+    delete _tokenURI[_tokenId];
     _burn(tokenId);
   }
 

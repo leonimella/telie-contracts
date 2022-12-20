@@ -265,9 +265,9 @@ describe("TelieGallery721", async () => {
       it("Owner should update mint fee", async () => {
         const { telie721 } = await loadFixture(setupFixture);
         const currentFee = await telie721.mintFee();
-        const newFee = parseEther("1");
+        const newFee = parseEther("2");
 
-        expect(currentFee).to.be.equals(parseEther("2"));
+        expect(currentFee).to.be.equals(parseEther("1"));
         await telie721.updateMintFee(newFee);
 
         const updatedFee = await telie721.mintFee();
@@ -318,7 +318,7 @@ describe("TelieGallery721", async () => {
     });
 
     describe("Withdrawal", async () => {
-      it("Owner should withdrawal all contract balance", async () => {
+      it("Owner should withdraw all contract balance", async () => {
         const { telie721 } = await loadFixture(setupFixture);
         const [owner] = await ethers.getSigners();
         const ownerCurrentBalance = await owner.getBalance();
@@ -326,7 +326,7 @@ describe("TelieGallery721", async () => {
           telie721.address
         );
 
-        await telie721.withdrawal();
+        await telie721.withdraw();
         const ownerUpdatedBalance = await owner.getBalance();
 
         expect(ownerUpdatedBalance).to.be.closeTo(
@@ -335,32 +335,29 @@ describe("TelieGallery721", async () => {
         );
       });
 
-      it("Reverts if non-owner call withdrawal", async () => {
+      it("Reverts if non-owner call withdraw", async () => {
         const { telie721 } = await loadFixture(setupFixture);
         const [_, alice] = await ethers.getSigners();
 
-        await expect(telie721.connect(alice).withdrawal()).to.revertedWith(
+        await expect(telie721.connect(alice).withdraw()).to.revertedWith(
           "Telie: not owner"
         );
       });
 
-      it("Shoud withdrawal if contract is paused", async () => {
+      it("Shoud withdraw if contract is paused", async () => {
         const { telie721 } = await loadFixture(setupFixture);
 
         await telie721.togglePause();
         const paused = await telie721.paused();
         expect(true).to.be.equals(paused);
 
-        await telie721.withdrawal();
+        await telie721.withdraw();
       });
 
       it("Emits BalanceWithdrew", async () => {
         const { telie721 } = await loadFixture(setupFixture);
 
-        await expect(telie721.withdrawal()).to.emit(
-          telie721,
-          "BalanceWithdrew"
-        );
+        await expect(telie721.withdraw()).to.emit(telie721, "BalanceWithdrew");
       });
     });
   });
@@ -479,6 +476,21 @@ describe("TelieGallery721", async () => {
           await telie721.connect(alice).burn(1);
           const aliceBurnedBalance = await telie721.balanceOf(alice.address);
           expect(0).to.be.equals(aliceBurnedBalance);
+        });
+
+        it("Should remove associated URI from _tokenURI", async () => {
+          const { telie721 } = await loadFixture(setupFixture);
+          const [_, alice] = await ethers.getSigners();
+
+          await telie721
+            .connect(alice)
+            .mint(defaultUri, { value: parseEther("2") });
+          const uriBefore = await telie721.tokenURI(1);
+          expect(uriBefore).to.be.equals(defaultUri);
+
+          await telie721.connect(alice).burn(1);
+          const uriAfter = await telie721.tokenURI(1);
+          expect(uriAfter).to.be.equals("");
         });
 
         it("Reverts token burn if caller is not the owner", async () => {

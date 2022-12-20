@@ -9,6 +9,6 @@
 - The Token URI can’t be updated after minted
 - The owner of the contract is defined at deployment time
 - Only the owner of the contract can transfer the owner status
-- Only the owner of the contract can withdrawal contract funds as they wish
+- Only the owner of the contract can withdraw contract funds as they wish
 - Only the owner has the ability to pause the contract.
 - In this status mint, burn, transfers, fee update and owner update are locked until the contract is unpaused
