@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -30,7 +30,6 @@ contract TelieGallery721 is ERC721 {
 
   constructor(string memory name, string memory symbol) ERC721(name, symbol) {
     owner = msg.sender;
-    paused = false;
   }
 
   // =============================================================
@@ -58,7 +57,7 @@ contract TelieGallery721 is ERC721 {
 
   function withdraw() external onlyOwner {
     uint256 balance = address(this).balance;
-    (bool success, ) = msg.sender.call{value: balance}("");
+    (bool success, ) = owner.call{value: balance}("");
 
     require(success, "Telie: unsuccessful withdraw");
     emit BalanceWithdrew(balance);
